@@ -1,0 +1,21 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+// @import url('https://fonts.googleapis.com/css2?family=Nunito+Sans:ital,wght@0,200;0,300;0,400;0,600;0,700;1,200;1,300;1,400;1,600;1,700&display=swap');
+// body{
+//   font-family: 'Nunito Sans', sans-serif;
+//     font-weight: 300;
+// }
+
+.height-default{
+  min-height: 300px;
+}
+
+ .choose + label{
+   border: 2px solid transparent;
+   @apply transition-all;
+ }
+ .choose:checked+label{ 
+   @apply border-green-300;
+  @apply shadow-lg;
+ } 
