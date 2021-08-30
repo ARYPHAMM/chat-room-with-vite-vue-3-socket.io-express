@@ -1,5 +1,6 @@
 let app = require("express")();
 let http = require("http").Server(app);
+let mysql = require("./db.js");
 let io = require("socket.io")(http, {
   cors: {
     origin: "http://127.0.0.1:3000",
@@ -9,7 +10,11 @@ let io = require("socket.io")(http, {
   pingTimeout: 1000,
 });
 app.get("/", (req, res) => {
-  res.sendFile(__dirname + "/index.html");
+  // mysql.query("SELECT * FROM users", function (error, results, fields) {
+  //   if (error) throw error;
+  //   return res.send({ error: false, data: results, message: "users list." });
+  // });
+  // res.sendFile(__dirname + "/index.html");
 });
 let host = "127.0.0.1";
 let port = process.env.PORT || 8000;
@@ -17,12 +22,57 @@ http.listen(port, host, () => {
   console.log("Listening on port *: " + port);
 });
 io.on("connection", (socket) => {
-  socket.on("room", (room) => {
-    socket.join(room);
-    socket.emit("connections", io.sockets.adapter.rooms.get(room).size);
-    socket
-      .to(room)
-      .emit("connections", io.sockets.adapter.rooms.get(room).size);
+  socket.on("room", (user) => {
+    socket.join(user.room);
+    mysql
+      .query("SELECT * FROM users where email = '" + user.email + "' ")
+      .then((res) => {
+        if (res[0] == null) {
+          mysql
+            .query(
+              "SELECT 2 as type, u.username,c.* FROM chat c, users u where c.user_id = u.id and room = '" +
+                user.room +
+                "' order by id asc "
+            )
+            .then((messages) => {
+              socket.emit(
+                "connections",
+                io.sockets.adapter.rooms.get(user.room).size,
+                messages
+              );
+              socket
+                .to(user.room)
+                .emit(
+                  "connections",
+                  io.sockets.adapter.rooms.get(user.room).size
+                );
+              delete user["room"];
+              mysql.insert(user, "users").then((res) => {});
+            });
+        } else {
+          mysql
+            .query(
+              "SELECT IF(user_id = " +
+                res[0].id +
+                ", 1, 2) as type, u.username,c.* FROM chat c, users u where c.user_id = u.id and room = '" +
+                user.room +
+                "' order by id asc "
+            )
+            .then((messages) => {
+              socket.emit(
+                "connections",
+                io.sockets.adapter.rooms.get(user.room).size,
+                messages
+              );
+              socket
+                .to(user.room)
+                .emit(
+                  "connections",
+                  io.sockets.adapter.rooms.get(user.room).size
+                );
+            });
+        }
+      });
   });
   // socket.emit('123',socket.client.conn.server.clientsCount); // user current
   //   socket.broadcast.emit("123", socket.client.conn.server.clientsCount); // all user
@@ -47,8 +97,19 @@ io.on("connection", (socket) => {
     // let rooms = Object.keys(io.sockets.adapter.rooms);
     // socket.emit("disconnect", io.sockets.adapter.rooms.get(room).size);
   });
-  socket.on("chat-message", (data) => {
-    socket.to(data.room).emit("chat-message", data);
+  socket.on("chat-message", (chat) => {
+    mysql
+      .query("SELECT * FROM users where email = '" + chat.email + "' ")
+      .then((res) => {
+        let chat_data = {
+          user_id: res[0].id,
+          room: chat.room,
+          message: chat.message,
+          time: chat.time,
+        };
+        mysql.insert(chat_data, "chat").then((res) => console.log(res));
+      });
+    socket.to(chat.room).emit("chat-message", chat);
   });
 });
 // io.on('disconnect', (res) => {

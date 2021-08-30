@@ -82,35 +82,47 @@ export default {
      let connections = ref(0);
      const messages = reactive([]);
      const username = ref('');
+     const email = ref('');
      const room = ref(route.query.id_room);
+     username.value = route.query.id;
+     email.value = route.query.email;
      socket.on('connect', function() {
-      socket.emit('room', room.value);
+       let user = {
+         room: room.value,
+         username: username.value,
+         email: email.value
+       }
+       socket.emit('room',user);
      });
-     socket.on('connections', (data) => { 
+     
+     socket.on('connections', (data,message) => { 
+         if(messages.length == 0)
+          message.map((currentValue) => {
+             messages.push(currentValue);
+          });
          connections.value = data;
+         setTimeout(function () { setScrollTop() }, 300);
      });
      socket.on('disconnectroom', (data) => { 
          connections.value = data;
      });
      socket.on('chat-message', (data) => {
          messages.push({
-                    message: data.message,
-             type: 2,
+               message: data.message,
+               type: 2,
                username: data.username,
                time: data.time,
          });
-           setTimeout(function () { setScrollTop() }, 300);
+         setTimeout(function () { setScrollTop() }, 300);
     });
-    onMounted(() => {
-      username.value = route.query.id;
-    });
+
     const setScrollTop = ()=>{
      let scrollHeight = chat.value.scrollHeight;
       chat.value.scrollTop = scrollHeight; 
     }
     const send = () =>{
       var time = new Date();
-      info.value = {room: room.value, username: username.value, message: newMessage.value,time: time.getHours() + ":" + time.getMinutes() + ":" + time.getSeconds()};
+      info.value = {room: room.value, username: username.value,email: email.value, message: newMessage.value,time: time.getHours() + ":" + time.getMinutes() + ":" + time.getSeconds()};
       socket.emit('chat-message', info.value);
       info.value.type = 1;
       messages.push(info.value);

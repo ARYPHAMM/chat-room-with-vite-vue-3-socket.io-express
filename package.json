@@ -23,6 +23,7 @@
     "eslint-plugin-vue": "^7.17.0",
     "postcss": "^8.3.6",
     "tailwindcss": "^2.2.8",
+    "mysql": "^2.18.1",
     "vite": "^2.5.1"
   }
 }

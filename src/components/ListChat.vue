@@ -93,18 +93,33 @@
       </div>
       <div class="flex justify-center">
         <input
-          v-model="name"
+          v-model="username"
           type="text"
           class="
+          mx-1
             placeholder-white
             bg-pink-200
             rounded-md
             px-3
             text-lg
-            outline-white
+            outline-none
             py-1
           "
           placeholder="Nhập tên tài khoản" />
+        <input
+          v-model="email"
+          type="text"
+          class="
+          mx-1
+            placeholder-white
+            bg-pink-200
+            rounded-md
+            px-3
+            text-lg
+            outline-none
+            py-1
+          "
+          placeholder="Nhập email" />
         <button
           class="
             pl
@@ -129,21 +144,23 @@ import router from "../router";
 export default {
   setup(props, context) {
     const radio = ref("");
-    const name = ref("");
+    const username = ref("");
+    const email = ref("");
     const go = () => {
       if (radio.value == "") {
         alert("Vui lòng chọn phòng chat!");
       } else {
         // router.push({
         //     path: '/chat', 
-        //     query: { id: name.value,id_room: radio.value }
+        //     query: { id: username.value,id_room: radio.value }
         // });
-         window.location.href = `chat?id=${name.value}&id_room=${radio.value}`;
+         window.location.href = `chat?id=${username.value}&email=${username.value}&id_room=${radio.value}`;
       }
     };
     return {
       radio,
-      name,
+      username,
+      email,
       go,
     };
   },
