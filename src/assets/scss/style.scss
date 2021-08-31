@@ -7,15 +7,28 @@
 //     font-weight: 300;
 // }
 
-.height-default{
+.height-default {
   min-height: 300px;
 }
 
- .choose + label{
-   border: 2px solid transparent;
-   @apply transition-all;
- }
- .choose:checked+label{ 
-   @apply border-green-300;
+.choose + label {
+  border: 2px solid transparent;
+  @apply transition-all;
+}
+.choose:checked + label {
+  @apply border-green-300;
   @apply shadow-lg;
- } 
+}
+*::-webkit-scrollbar {
+  width: 3px;
+}
+
+*::-webkit-scrollbar-track {
+  background-color: #e4e4e4;
+  border-radius: 100px;
+}
+
+*::-webkit-scrollbar-thumb {
+  background-color: #b3b3b3;
+  border-radius: 100px;
+}
