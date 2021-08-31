@@ -1,4 +1,7 @@
 let app = require("express")();
+let bodyParser = require("body-parser");
+let cors = require("cors");
+let CryptoJS = require("crypto-js"); // md password
 let http = require("http").Server(app);
 let mysql = require("./db.js");
 let io = require("socket.io")(http, {
@@ -9,12 +12,103 @@ let io = require("socket.io")(http, {
   pingInterval: 1000,
   pingTimeout: 1000,
 });
-app.get("/", (req, res) => {
-  // mysql.query("SELECT * FROM users", function (error, results, fields) {
-  //   if (error) throw error;
-  //   return res.send({ error: false, data: results, message: "users list." });
-  // });
-  // res.sendFile(__dirname + "/index.html");
+app.use(cors());
+app.use(bodyParser());
+app.get("/", (req, res) => {});
+app.post("/api/user", (req, res) => {
+  mysql
+    .query(
+      "SELECT * FROM users where token = '" +
+        req.headers.authorization.split(" ")[1] +
+        "' "
+    )
+    .then((item) => {
+      if (item[0] != null) {
+        delete item[0]["password"];
+        res.json(item[0]).status(200);
+      } else {
+        res.status(400).json(false);
+      }
+    });
+});
+app.post("/api/register", (req, res) => {
+  mysql
+    .query(
+      "SELECT * FROM users where email = '" +
+        req.body.email +
+        "' or username = '" +
+        req.body.username +
+        "' "
+    )
+    .then((item) => {
+      if (item[0] != null) {
+        res.json(false);
+      } else {
+        req.body.password = CryptoJS.MD5(req.body.password).toString();
+        mysql.insert(req.body, "users").catch((error) => {
+          res.json(false);
+        });
+        res.json(true);
+      }
+    });
+});
+app.post("/api/login", (req, res) => {
+  mysql
+    .query(
+      "SELECT * FROM users where email = '" +
+        req.body.email +
+        "' and password = '" +
+        CryptoJS.MD5(req.body.password).toString() +
+        "' "
+    )
+    .then((item) => {
+      if (item[0] != null) {
+        let token = {
+          accessToken: CryptoJS.MD5(
+            req.body.email + req.body.password
+          ).toString(),
+        };
+        mysql
+          .update({ id: item[0].id }, { token: token.accessToken }, "users")
+          .then((resuser) => {
+            res.json(token);
+          })
+          .catch((error) => {
+            res.json(false);
+          });
+      } else {
+        res.json(false);
+      }
+    });
+});
+app.post("/api/logout", (req, res) => {
+  mysql
+    .query(
+      "SELECT * FROM users where email = '" +
+        req.body.email +
+        "' and password = '" +
+        CryptoJS.MD5(req.body.password).toString() +
+        "' "
+    )
+    .then((item) => {
+      if (item[0] != null) {
+        let token = {
+          accessToken: CryptoJS.MD5(
+            req.body.email + req.body.password
+          ).toString(),
+        };
+        mysql
+          .update({ id: item[0].id }, { token: token.accessToken }, "users")
+          .then((resuser) => {
+            res.json(token);
+          })
+          .catch((error) => {
+            res.json(false);
+          });
+      } else {
+        res.json(false);
+      }
+    });
 });
 let host = "127.0.0.1";
 let port = process.env.PORT || 8000;
@@ -25,31 +119,18 @@ io.on("connection", (socket) => {
   socket.on("room", (user) => {
     socket.join(user.room);
     mysql
-      .query("SELECT * FROM users where email = '" + user.email + "' ")
+      .query(
+        "SELECT * FROM users where email = '" +
+          user.email +
+          "' and token = '" +
+          user.token +
+          "' "
+      )
       .then((res) => {
         if (res[0] == null) {
-          mysql
-            .query(
-              "SELECT 2 as type, u.username,c.* FROM chat c, users u where c.user_id = u.id and room = '" +
-                user.room +
-                "' order by id asc "
-            )
-            .then((messages) => {
-              socket.emit(
-                "connections",
-                io.sockets.adapter.rooms.get(user.room).size,
-                messages
-              );
-              socket
-                .to(user.room)
-                .emit(
-                  "connections",
-                  io.sockets.adapter.rooms.get(user.room).size
-                );
-              delete user["room"];
-              mysql.insert(user, "users").then((res) => {});
-            });
+          socket.emit("auth", false);
         } else {
+          socket.emit("auth", { username: res[0].username });
           mysql
             .query(
               "SELECT IF(user_id = " +
@@ -99,17 +180,33 @@ io.on("connection", (socket) => {
   });
   socket.on("chat-message", (chat) => {
     mysql
-      .query("SELECT * FROM users where email = '" + chat.email + "' ")
+      .query(
+        "SELECT * FROM users where email = '" +
+          chat.email +
+          "' and token = '" +
+          chat.token +
+          "' "
+      )
       .then((res) => {
-        let chat_data = {
-          user_id: res[0].id,
-          room: chat.room,
-          message: chat.message,
-          time: chat.time,
-        };
-        mysql.insert(chat_data, "chat").then((res) => console.log(res));
+        if (res[0] != null) {
+          let chat_data = {
+            user_id: res[0].id,
+            room: chat.room,
+            message: chat.message,
+            time: chat.time,
+          };
+          mysql
+            .insert(chat_data, "chat")
+            .then((res) => res)
+            .catch((error) => {
+              socket.emit("auth", false);
+              return;
+            });
+          socket.to(chat.room).emit("chat-message", chat);
+        } else {
+          socket.emit("auth", false);
+        }
       });
-    socket.to(chat.room).emit("chat-message", chat);
   });
 });
 // io.on('disconnect', (res) => {

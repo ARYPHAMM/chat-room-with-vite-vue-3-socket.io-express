@@ -35,7 +35,33 @@ const insert = async (data, table) => {
       });
   });
 };
+const update = async (condition, data, table) => {
+  return new Promise((resolve, reject) => {
+    let item = [];
+    let condt = [];
+    for (const key in condition) {
+      // condt.push(key+" = "+"'"+condition[key+"'");
+      condt.push(`${key} = '${condition[key]}'`);
+    }
+    for (const key in data) {
+      item.push(`${key} = '${data[key]}'`);
+    }
+
+    condt = condt.join(",");
+    item = item.join(",");
+    let sql = `update ${table} set ${item} where ${condt}`;
+
+    query(sql)
+      .then((res) => {
+        resolve(res);
+      })
+      .catch((res) => {
+        reject(new Error(res));
+      });
+  });
+};
 module.exports = {
   query,
   insert,
+  update,
 };
