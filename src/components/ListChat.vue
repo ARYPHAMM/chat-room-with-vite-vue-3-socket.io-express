@@ -91,22 +91,12 @@
           </label>
         </div>
       </div>
-      <div class="flex justify-center">
+
+      <div
+        
+        class="flex justify-center">
         <input
-          v-model="username"
-          type="text"
-          class="
-          mx-1
-            placeholder-white
-            bg-pink-200
-            rounded-md
-            px-3
-            text-lg
-            outline-none
-            py-1
-          "
-          placeholder="Nhập tên tài khoản" />
-        <input
+          v-if="!login"
           v-model="email"
           type="text"
           class="
@@ -120,6 +110,26 @@
             py-1
           "
           placeholder="Nhập email" />
+        <input
+          v-if="!login"
+          v-model="password"
+          type="password"
+          class="
+          mx-1
+            placeholder-white
+            bg-pink-200
+            rounded-md
+            px-3
+            text-lg
+            outline-none
+            py-1
+          "
+          placeholder="Nhập mật khẩu" />
+        <div
+          v-if="login"
+          class="flex items-center">
+          Account: {{ username }}
+        </div>
         <button
           class="
             pl
@@ -134,34 +144,93 @@
           @click="go">
           Tham gia
         </button>
+        <button
+          v-if="login"
+          class="
+            pl
+            mx-2
+            px-3
+            py-2
+            bg-yellow-100
+            shadow-2xl
+            font-semibold
+            rounded-full
+          "
+          @click="logout">
+          Đăng xuất
+        </button>
+        <router-link
+          v-if="!login"
+          :to="{path:'/dang-ky'}"
+          class="
+            pl
+            mx-2
+            px-3
+            py-2
+            bg-yellow-100
+            shadow-2xl
+            font-semibold
+            rounded-full
+          ">
+          Đăng ký
+        </router-link>
       </div>
     </div>
   </div>
 </template>
 <script>
-import { ref } from "vue";
+import { ref,getCurrentInstance,onMounted  } from "vue";
 import router from "../router";
 export default {
   setup(props, context) {
+    const internalInstance = getCurrentInstance()
+    const auth = internalInstance.appContext.config.globalProperties.auth;
     const radio = ref("");
     const username = ref("");
+    const password = ref("");
     const email = ref("");
+    const login = ref(false);
+    
+    onMounted(()=>{
+      auth.user().then(res=>{
+          login.value = true;
+          username.value = res.username;
+          email.value = res.email
+      });
+    })
     const go = () => {
       if (radio.value == "") {
         alert("Vui lòng chọn phòng chat!");
       } else {
-        // router.push({
-        //     path: '/chat', 
-        //     query: { id: username.value,id_room: radio.value }
-        // });
-         window.location.href = `chat?id=${username.value}&email=${username.value}&id_room=${radio.value}`;
+          if(!login.value){
+            let data = {
+            email: email.value,
+            password: password.value
+            }
+            auth.login(data,'/api/login').then((response) => {
+                window.location.href = `chat?email=${email.value}&id_room=${radio.value}`;
+            }).catch(error=>{
+              alert("Kiem tra lai tai khoan va mat khau!");
+            });
+        }else{
+          window.location.href = `chat?email=${email.value}&id_room=${radio.value}`;
+        }
       }
     };
+   const logout = () => {
+     auth.logout();
+     login.value = false;
+     username.value = null;
+     email.value = ""
+   };
     return {
       radio,
-      username,
+      password,
       email,
+      username,
+      login,
       go,
+      logout,
     };
   },
 };

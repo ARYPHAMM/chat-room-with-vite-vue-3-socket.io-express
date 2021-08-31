@@ -8,6 +8,7 @@
     "serve": "vite preview"
   },
   "dependencies": {
+    "axios": "^0.21.1",
     "express": "^4.17.1",
     "sass": "^1.38.1",
     "socket.io": "^4.1.3",

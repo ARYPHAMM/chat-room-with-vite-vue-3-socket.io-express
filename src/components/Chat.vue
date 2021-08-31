@@ -11,15 +11,17 @@
       shadow-lg
       rounded-lg
     ">
-    Online:  {{ connections }}
+    Online: {{ connections }}
     <div
       ref="chat"
       class="h-96 overflow-overlay">
       <div class="message-content p-3 flex flex-col">
         <div
-          v-for="item,index in messages"
+          v-for="(item, index) in messages"
           :key="index"
-          :class="`me-message w-11/12 rounded-lg p-2 mb-1 ${item.type == 1 ? 'bg-pink-100 ml-auto': 'bg-pink-200 mr-auto'}`">
+          :class="`me-message w-11/12 rounded-lg p-2 mb-1 ${
+            item.type == 1 ? 'bg-pink-100 ml-auto' : 'bg-pink-200 mr-auto'
+          }`">
           <div>{{ item.message }}</div>
           <div class="flex justify-end">
             {{ item.time }} {{ item.username }}
@@ -65,85 +67,110 @@
 </template>
 <script>
 import { io } from "socket.io-client";
-import { useRoute } from 'vue-router';
-import { ref,reactive,onMounted,watchEffect   } from 'vue';
+import { useRoute,useRouter } from "vue-router";
+import { ref, reactive, onMounted, watchEffect,getCurrentInstance } from "vue";
 
-const socket = io("http://localhost:8000", {transports: ["websocket", "polling", "flashsocket"],});
+const socket = io("http://localhost:8000", {
+  transports: ["websocket", "polling", "flashsocket"],
+});
 export default {
   name: "Chat",
-  setup(props, context) { 
-     const route = useRoute();
-     const chat = ref(null)
+  setup(props, context) {
+     const internalInstance = getCurrentInstance()
+    const auth = internalInstance.appContext.config.globalProperties.auth;
+    const route = useRoute();
+    const router = useRouter();
+    const chat = ref(null);
 
-     let newMessage = ref(null);
+    let newMessage = ref(null);
     //  let typing = ref(false);
     //  let ready = ref(false);
-     let info = reactive([]);
-     let connections = ref(0);
-     const messages = reactive([]);
-     const username = ref('');
-     const email = ref('');
-     const room = ref(route.query.id_room);
-     username.value = route.query.id;
-     email.value = route.query.email;
-     socket.on('connect', function() {
-       let user = {
-         room: room.value,
-         username: username.value,
-         email: email.value
-       }
-       socket.emit('room',user);
-     });
-     
-     socket.on('connections', (data,message) => { 
-         if(messages.length == 0)
-          message.map((currentValue) => {
-             messages.push(currentValue);
-          });
-         connections.value = data;
-         setTimeout(function () { setScrollTop() }, 300);
-     });
-     socket.on('disconnectroom', (data) => { 
-         connections.value = data;
-     });
-     socket.on('chat-message', (data) => {
-         messages.push({
-               message: data.message,
-               type: 2,
-               username: data.username,
-               time: data.time,
-         });
-         setTimeout(function () { setScrollTop() }, 300);
+    let info = reactive([]);
+    let connections = ref(0);
+    const messages = reactive([]);
+    const username = ref("");
+    const email = ref("");
+    const room = ref(route.query.id_room);
+    email.value = route.query.email;
+    socket.on("connect", function () {
+      let user = {
+        room: room.value,
+        token: auth.token(),
+        email: email.value,
+      };
+      socket.emit("room", user);
+    });
+    socket.on("auth", (auth) => {
+     if(!auth){
+       alert("Lỗi xác thực!!!")
+        router.push('/');
+     }else{
+       username.value = auth.username;
+     }
+    });
+    socket.on("connections", (data, message) => {
+      if (messages.length == 0)
+        message.map((currentValue) => {
+          messages.push(currentValue);
+        });
+      connections.value = data;
+      setTimeout(function () {
+        setScrollTop();
+      }, 300);
+    });
+    socket.on("disconnectroom", (data) => {
+      connections.value = data;
+    });
+    socket.on("chat-message", (data) => {
+      messages.push({
+        message: data.message,
+        type: 2,
+        username: data.username,
+        time: data.time,
+      });
+      setTimeout(function () {
+        setScrollTop();
+      }, 300);
     });
 
-    const setScrollTop = ()=>{
-     let scrollHeight = chat.value.scrollHeight;
-      chat.value.scrollTop = scrollHeight; 
-    }
-    const send = () =>{
+    const setScrollTop = () => {
+      let scrollHeight = chat.value.scrollHeight;
+      chat.value.scrollTop = scrollHeight;
+    };
+    const send = () => {
       var time = new Date();
-      info.value = {room: room.value, username: username.value,email: email.value, message: newMessage.value,time: time.getHours() + ":" + time.getMinutes() + ":" + time.getSeconds()};
-      socket.emit('chat-message', info.value);
+      info.value = {
+        room: room.value,
+        username: username.value,
+        email: email.value,
+        message: newMessage.value,
+        token: auth.token(),
+        time:
+          time.getHours() + ":" + time.getMinutes() + ":" + time.getSeconds(),
+      };
+      socket.emit("chat-message", info.value);
       info.value.type = 1;
       messages.push(info.value);
       newMessage.value = "";
-      setTimeout(function () { setScrollTop() }, 300);
-   }
+      setTimeout(function () {
+        setScrollTop();
+      }, 300);
+    };
 
-  return {
-    username,
-    chat,
-    room,
-    newMessage,
-    messages,
-    connections,
-    send
-  }
+    return {
+      username,
+      chat,
+      room,
+      newMessage,
+      messages,
+      connections,
+      send,
+    };
   },
 };
 </script>
 <style scss>
-.overflow-overlay{
+.overflow-overlay {
   overflow: overlay;
 }
 </style>
