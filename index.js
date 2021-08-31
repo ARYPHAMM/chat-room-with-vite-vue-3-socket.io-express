@@ -2,6 +2,7 @@ let app = require("express")();
 let bodyParser = require("body-parser");
 let cors = require("cors");
 let CryptoJS = require("crypto-js"); // md password
+const { Socket } = require("dgram");
 let http = require("http").Server(app);
 let mysql = require("./db.js");
 let io = require("socket.io")(http, {
@@ -115,9 +116,22 @@ let port = process.env.PORT || 8000;
 http.listen(port, host, () => {
   console.log("Listening on port *: " + port);
 });
+// io.use((socket, next) => {
+//   io.engine.generateId = () => {
+//     socket.handshake.query.email;
+//   };
+//   next(null, true);
+// });
 io.on("connection", (socket) => {
   socket.on("room", (user) => {
-    socket.join(user.room);
+    let join = false;
+    Array.from(io.sockets.sockets).map((currentValue) => {
+      if (currentValue[1].abc == socket.handshake.query.email) join = true;
+    });
+    if (!join) {
+      socket.abc = socket.handshake.query.email;
+      socket.join(user.room);
+    }
     mysql
       .query(
         "SELECT * FROM users where email = '" +
@@ -137,7 +151,7 @@ io.on("connection", (socket) => {
                 res[0].id +
                 ", 1, 2) as type, u.username,c.* FROM chat c, users u where c.user_id = u.id and room = '" +
                 user.room +
-                "' order by id asc "
+                "' order by id desc limit 6"
             )
             .then((messages) => {
               socket.emit(
@@ -151,6 +165,36 @@ io.on("connection", (socket) => {
                   "connections",
                   io.sockets.adapter.rooms.get(user.room).size
                 );
+            });
+        }
+      });
+  });
+  socket.on("loadmore", (user) => {
+    mysql
+      .query(
+        "SELECT * FROM users where email = '" +
+          user.email +
+          "' and token = '" +
+          user.token +
+          "' "
+      )
+      .then((res) => {
+        if (res[0] == null) {
+          socket.emit("auth", false);
+        } else {
+          socket.emit("auth", { username: res[0].username });
+          mysql
+            .query(
+              "SELECT IF(user_id = " +
+                res[0].id +
+                ", 1, 2) as type, u.username,c.* FROM chat c, users u where c.user_id = u.id and room = '" +
+                user.room +
+                "' order by id desc limit 7 offset " +
+                user.offset +
+                ""
+            )
+            .then((messages) => {
+              socket.emit("loadmore", messages);
             });
         }
       });
