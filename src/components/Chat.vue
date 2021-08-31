@@ -7,9 +7,10 @@
       block
       m-auto
       p-4
-      mt-3
+      lg:mt-3
       shadow-lg
-      rounded-lg
+      lg:rounded-lg
+   
     ">
     Online: {{ connections }}
     <div
@@ -17,22 +18,32 @@
       class="h-96 overflow-overlay">
       <div class="message-content p-3 flex flex-col">
         <div
+          v-if="loadMore != 0"
+          class="flex justify-center"
+          @click="loadMessages">
+          <button class="outline-none">
+            <i class="fas fa-chevron-up    "></i>
+          </button> 
+        </div>
+        <div
           v-for="(item, index) in messages"
           :key="index"
           :class="`me-message w-11/12 rounded-lg p-2 mb-1 ${
             item.type == 1 ? 'bg-pink-100 ml-auto' : 'bg-pink-200 mr-auto'
           }`">
           <div>{{ item.message }}</div>
-          <div class="flex justify-end">
-            {{ item.time }} {{ item.username }}
+          <div class="flex items-end flex-col">
+            <span>{{ item.username }}</span>
+            <span>{{ item.time }}</span>
           </div>
         </div>
       </div>
     </div>
-    <div>
-      <textarea
-        v-model="newMessage"
-        class="
+    <div class="flex flex-col">
+      <div class="flex items-center justify-center">
+        <textarea
+          v-model="newMessage"
+          class="
           placeholder-white
           bg-pink-200
           rounded-md
@@ -43,10 +54,10 @@
           w-10/12
           float-left
         "
-        placeholder="Nhập nội dung"
-        rows="2"></textarea>
-      <button
-        class="
+          placeholder="Nhập nội dung"
+          rows="2"></textarea>
+        <button
+          class="
           pl
           mx-2
           px-3
@@ -58,9 +69,28 @@
           whitespace-nowrap
           float-left
         "
-        @click="send">
-        Gửi
-      </button>
+          @click="send">
+          Gửi
+        </button>
+      </div>
+      <div class="w-full flex justify-center">
+        <router-link
+          :to="{path:'/'}"
+          class="
+          mt-3
+          pl
+          mx-2
+          px-3
+          py-2
+          bg-yellow-100
+          font-semibold
+          rounded-full
+         
+        "
+          @click="send">
+          Quay về phòng chat
+        </router-link>
+      </div>
     </div>
     <div class="clear-both"></div>
   </div>
@@ -70,12 +100,11 @@ import { io } from "socket.io-client";
 import { useRoute,useRouter } from "vue-router";
 import { ref, reactive, onMounted, watchEffect,getCurrentInstance } from "vue";
 
-const socket = io("http://localhost:8000", {
-  transports: ["websocket", "polling", "flashsocket"],
-});
+
 export default {
   name: "Chat",
   setup(props, context) {
+
      const internalInstance = getCurrentInstance()
     const auth = internalInstance.appContext.config.globalProperties.auth;
     const route = useRoute();
@@ -87,11 +116,16 @@ export default {
     //  let ready = ref(false);
     let info = reactive([]);
     let connections = ref(0);
+    let loadMore = ref(0);
     const messages = reactive([]);
     const username = ref("");
     const email = ref("");
     const room = ref(route.query.id_room);
     email.value = route.query.email;
+         const socket = io("http://localhost:8000", {
+      transports: ["websocket", "polling", "flashsocket"],
+      query:'email='+ email.value
+    },);
     socket.on("connect", function () {
       let user = {
         room: room.value,
@@ -109,10 +143,16 @@ export default {
      }
     });
     socket.on("connections", (data, message) => {
-      if (messages.length == 0)
+      if (messages.length == 0){
+        if(message.length == 6){
+        
+          loadMore.value = message.length;
+           message.pop();
+        }
         message.map((currentValue) => {
-          messages.push(currentValue);
+          messages.unshift(currentValue);
         });
+      }
       connections.value = data;
       setTimeout(function () {
         setScrollTop();
@@ -124,7 +164,7 @@ export default {
     socket.on("chat-message", (data) => {
       messages.push({
         message: data.message,
-        type: 2,
+        type: data.username == username.value? 1 : 2,
         username: data.username,
         time: data.time,
       });
@@ -146,7 +186,7 @@ export default {
         message: newMessage.value,
         token: auth.token(),
         time:
-          time.getHours() + ":" + time.getMinutes() + ":" + time.getSeconds(),
+          time.getHours() + ":" + time.getMinutes(),
       };
       socket.emit("chat-message", info.value);
       info.value.type = 1;
@@ -156,6 +196,29 @@ export default {
         setScrollTop();
       }, 300);
     };
+    const loadMessages = () =>{
+      let user = {
+        room: room.value,
+        token: auth.token(),
+        email: email.value,
+        offset: loadMore.value
+      };
+      socket.emit("loadmore", user);
+
+    }
+   socket.on("loadmore", (message) => {
+      if(message.length != 0){
+          loadMore.value = loadMore.value + message.length;
+          if(message.length < 7){
+              loadMore.value = 0;
+          }
+          message.shift();
+          message.map((currentValue) => {
+          messages.unshift(currentValue);
+        });
+      }
+    
+    });
 
     return {
       username,
@@ -165,6 +228,8 @@ export default {
       messages,
       connections,
       send,
+      loadMore,
+      loadMessages
     };
   },
 };

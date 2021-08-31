@@ -3,8 +3,10 @@
     <div
       class=" container
         max-w-3xl
-        shadow-md
-        border-t border-gray-100
+        lg:shadow-md
+        md:shadow-md
+        lg:border-t lg:border-gray-100
+        md:border-t md:border-gray-100
         w-full
         block
         m-auto
@@ -14,7 +16,7 @@
       <h1 class="font-bold text-2xl">
         Chọn phòng chat
       </h1>
-      <div class="flex flex-wrap">
+      <div class="flex flex-wrap justify-center lg:justify-items-start">
         <div class="flex">
           <input
             id="food"
@@ -94,12 +96,13 @@
 
       <div
         
-        class="flex justify-center">
-        <input
-          v-if="!login"
-          v-model="email"
-          type="text"
-          class="
+        class="flex justify-center flex-wrap">
+        <div class="w-full lg:w-auto flex justify-center flex-wrap">
+          <input
+            v-if="!login"
+            v-model="email"
+            type="text"
+            class="
           mx-1
             placeholder-white
             bg-pink-200
@@ -108,13 +111,17 @@
             text-lg
             outline-none
             py-1
+            my-3
+            lg:w-auto
+            md:w-auto
+            w-11/12
           "
-          placeholder="Nhập email" />
-        <input
-          v-if="!login"
-          v-model="password"
-          type="password"
-          class="
+            placeholder="Nhập email" />
+          <input
+            v-if="!login"
+            v-model="password"
+            type="password"
+            class="
           mx-1
             placeholder-white
             bg-pink-200
@@ -123,8 +130,13 @@
             text-lg
             outline-none
             py-1
+            my-3
+            lg:w-auto
+            md:w-auto
+            w-11/12
           "
-          placeholder="Nhập mật khẩu" />
+            placeholder="Nhập mật khẩu" />
+        </div>
         <div
           v-if="login"
           class="flex items-center">
@@ -140,6 +152,7 @@
             shadow-2xl
             font-semibold
             rounded-full
+            my-3
           "
           @click="go">
           Tham gia
@@ -155,6 +168,7 @@
             shadow-2xl
             font-semibold
             rounded-full
+            my-3
           "
           @click="logout">
           Đăng xuất
@@ -171,6 +185,7 @@
             shadow-2xl
             font-semibold
             rounded-full
+            my-3
           ">
           Đăng ký
         </router-link>
